@@ -1,48 +1,66 @@
-"""
-Database Schemas
+from typing import Optional, List, Literal
+from pydantic import BaseModel, Field, validator
 
-Define your MongoDB collection schemas here using Pydantic models.
-These schemas are used for data validation in your application.
 
-Each Pydantic model represents a collection in your database.
-Model name is converted to lowercase for the collection name:
-- User -> "user" collection
-- Product -> "product" collection
-- BlogPost -> "blogs" collection
-"""
+# Collection: property
+class Property(BaseModel):
+    owner_name: str
+    owner_email: Optional[str] = None
+    address: str
+    city: str
+    state: str
+    zip_code: str
+    property_type: Literal["single_family", "multi_family", "condo", "townhome", "land"] = "single_family"
+    bedrooms: Optional[int] = None
+    bathrooms: Optional[float] = None
+    sqft: Optional[int] = None
 
-from pydantic import BaseModel, Field
-from typing import Optional
+    asking_price: float = Field(..., ge=0)
+    arv: Optional[float] = Field(None, ge=0, description="After Repair Value")
+    repair_cost: Optional[float] = Field(0, ge=0)
 
-# Example schemas (replace with your own):
+    notes: Optional[str] = None
 
-class User(BaseModel):
-    """
-    Users collection schema
-    Collection name: "user" (lowercase of class name)
-    """
-    name: str = Field(..., description="Full name")
-    email: str = Field(..., description="Email address")
-    address: str = Field(..., description="Address")
-    age: Optional[int] = Field(None, ge=0, le=120, description="Age in years")
-    is_active: bool = Field(True, description="Whether user is active")
 
-class Product(BaseModel):
-    """
-    Products collection schema
-    Collection name: "product" (lowercase of class name)
-    """
-    title: str = Field(..., description="Product title")
-    description: Optional[str] = Field(None, description="Product description")
-    price: float = Field(..., ge=0, description="Price in dollars")
-    category: str = Field(..., description="Product category")
-    in_stock: bool = Field(True, description="Whether product is in stock")
+# Collection: buyer
+class Buyer(BaseModel):
+    name: str
+    email: str
+    phone: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    target_states: Optional[List[str]] = None
+    min_budget: Optional[float] = Field(0, ge=0)
+    max_budget: Optional[float] = Field(None, ge=0)
+    property_types: Optional[List[str]] = None
 
-# Add your own schemas here:
-# --------------------------------------------------
 
-# Note: The Flames database viewer will automatically:
-# 1. Read these schemas from GET /schema endpoint
-# 2. Use them for document validation when creating/editing
-# 3. Handle all database operations (CRUD) directly
-# 4. You don't need to create any database endpoints!
+# Collection: deal
+class Deal(BaseModel):
+    property_id: str
+    status: Literal["submitted", "matched", "reviewed", "closed"] = "submitted"
+    rank: Literal["A", "B", "C", "D"] = "D"
+    analysis: dict = {}
+    matched_buyer_ids: List[str] = []
+    jv_opt_in: bool = False
+    profit_split_percentage: Optional[float] = Field(0.0, ge=0, le=100)
+    contract_url: Optional[str] = None
+
+
+class DealReview(BaseModel):
+    approve: bool = True
+    notes: Optional[str] = None
+
+
+class CloseDealRequest(BaseModel):
+    sale_price: float = Field(..., ge=0)
+    jv_opt_in: bool = False
+    profit_split_percentage: Optional[float] = Field(0.0, ge=0, le=100)
+
+
+# Utility schemas
+class MatchResponse(BaseModel):
+    deal_id: str
+    matched_buyers: List[dict]
+    rank: str
+    analysis: dict
